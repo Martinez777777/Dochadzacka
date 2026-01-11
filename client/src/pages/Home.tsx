@@ -32,6 +32,12 @@ export default function Home() {
   const [managerTarget, setManagerTarget] = useState<"menu" | "prevadzka" | "logout">("menu");
   const [isLunchDialogOpen, setIsLunchDialogOpen] = useState(false);
   const [isVacationDialogOpen, setIsVacationDialogOpen] = useState(false);
+  const [isLunchOverviewDialogOpen, setIsLunchOverviewDialogOpen] = useState(false);
+  const [lunchOverviewEmployee, setLunchOverviewEmployee] = useState("");
+  const [lunchOverviewFromDate, setLunchOverviewFromDate] = useState(new Date().toISOString().split('T')[0]);
+  const [lunchOverviewToDate, setLunchOverviewToDate] = useState(new Date().toISOString().split('T')[0]);
+  const [lunchOverviewResults, setLunchOverviewResults] = useState<any[]>([]);
+  const [isViewingLunchOverview, setIsViewingLunchOverview] = useState(false);
   const [lunchEmployee, setLunchEmployee] = useState("");
   const [lunchDate, setLunchDate] = useState(new Date().toISOString().split('T')[0]);
   const [vacationEmployee, setVacationEmployee] = useState("");
@@ -49,6 +55,14 @@ export default function Home() {
       setVacationEmployee("");
     }
   }, [isVacationDialogOpen]);
+
+  useEffect(() => {
+    if (!isLunchOverviewDialogOpen) {
+      setLunchOverviewEmployee("");
+      setLunchOverviewResults([]);
+      setIsViewingLunchOverview(false);
+    }
+  }, [isLunchOverviewDialogOpen]);
 
   const [, setLocation] = useLocation();
   const { toast, dismiss } = useToast();
@@ -102,6 +116,42 @@ export default function Home() {
       toast({
         title: "Nesprávny kód",
         description: "Zadaný manažérsky kód je nesprávny.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleLunchOverviewShow = async () => {
+    if (!lunchOverviewEmployee || !lunchOverviewFromDate || !lunchOverviewToDate) {
+      toast({
+        title: "❌ Zabudol si niečo vyplniť, oprav to.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const res = await fetch(`${api.attendance.lunches.path}?code=${lunchOverviewEmployee}&from=${lunchOverviewFromDate}&to=${lunchOverviewToDate}`);
+      const data = await res.json();
+      setIsProcessing(false);
+
+      if (!res.ok) {
+        toast({
+          title: "❌ Chyba",
+          description: data.message || "Nepodarilo sa načítať obedy.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setLunchOverviewResults(data);
+      setIsViewingLunchOverview(true);
+    } catch (error) {
+      setIsProcessing(false);
+      toast({
+        title: "❌ Chyba",
+        description: "Chyba pripojenia k serveru.",
         variant: "destructive",
       });
     }
@@ -643,7 +693,7 @@ export default function Home() {
           <Button
             variant="outline"
             className="w-full h-12 rounded-xl border-border bg-white/50 backdrop-blur-sm hover:bg-white hover:shadow-md transition-all gap-2"
-            onClick={() => setLocation("/lunches")}
+            onClick={() => setIsLunchOverviewDialogOpen(true)}
           >
             <span className="text-base font-semibold">Prehľad obedy</span>
           </Button>
@@ -805,64 +855,157 @@ export default function Home() {
             </DialogContent>
           </Dialog>
 
-          <Dialog open={isVacationDialogOpen} onOpenChange={setIsVacationDialogOpen}>
-            <DialogContent className="sm:max-w-md bg-white">
-              <DialogHeader>
-                <DialogTitle>Záznam dovolenky</DialogTitle>
-              </DialogHeader>
-              <div className="flex flex-col gap-4 py-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Zamestnanec</label>
-                  <select 
-                    className="w-full h-12 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                    value={vacationEmployee}
-                    onChange={(e) => setVacationEmployee(e.target.value)}
-                  >
-                    <option value="">Vybrať zamestnanca...</option>
-                    {employees && Object.entries(employees).map(([pin, name]) => (
-                      <option key={pin} value={pin}>{String(name)}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Trvanie (hodiny)</label>
-                  <select 
-                    className="w-full h-12 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                    value={vacationDuration}
-                    onChange={(e) => setVacationDuration(e.target.value)}
-                  >
-                    <option value="4">4 hodiny</option>
-                    <option value="8">8 hodín</option>
-                    <option value="12">12 hodín</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Dátum</label>
-                  <Input
-                    type="date"
-                    value={vacationDate}
-                    onChange={(e) => setVacationDate(e.target.value)}
-                    className="h-12 border-black focus-visible:ring-black"
-                  />
-                </div>
+        <Dialog open={isVacationDialogOpen} onOpenChange={setIsVacationDialogOpen}>
+          <DialogContent className="sm:max-w-md bg-white">
+            <DialogHeader>
+              <DialogTitle>Záznam dovolenky</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Zamestnanec</label>
+                <select 
+                  className="w-full h-12 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  value={vacationEmployee}
+                  onChange={(e) => setVacationEmployee(e.target.value)}
+                >
+                  <option value="">Vybrať zamestnanca...</option>
+                  {employees && Object.entries(employees).map(([pin, name]) => (
+                    <option key={pin} value={pin}>{String(name)}</option>
+                  ))}
+                </select>
               </div>
-              <DialogFooter className="flex gap-2 sm:justify-between">
-                <Button 
-                  variant="outline"
-                  onClick={() => setIsVacationDialogOpen(false)}
-                  className="flex-1 h-12 border-black"
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Trvanie (hodiny)</label>
+                <select 
+                  className="w-full h-12 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  value={vacationDuration}
+                  onChange={(e) => setVacationDuration(e.target.value)}
                 >
-                  Zrušiť
-                </Button>
+                  <option value="4">4 hodiny</option>
+                  <option value="8">8 hodín</option>
+                  <option value="12">12 hodín</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Dátum</label>
+                <Input
+                  type="date"
+                  value={vacationDate}
+                  onChange={(e) => setVacationDate(e.target.value)}
+                  className="h-12 border-black focus-visible:ring-black"
+                />
+              </div>
+            </div>
+            <DialogFooter className="flex gap-2 sm:justify-between">
+              <Button 
+                variant="outline"
+                onClick={() => setIsVacationDialogOpen(false)}
+                className="flex-1 h-12 border-black"
+              >
+                Zrušiť
+              </Button>
+              <Button 
+                onClick={() => handleVacationSave(false)}
+                className="flex-1 h-12 bg-black text-white hover:bg-black/90"
+              >
+                Uložiť
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isLunchOverviewDialogOpen} onOpenChange={setIsLunchOverviewDialogOpen}>
+          <DialogContent className="sm:max-w-md bg-white max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Prehľad obedy</DialogTitle>
+            </DialogHeader>
+            {!isViewingLunchOverview ? (
+              <>
+                <div className="flex flex-col gap-4 py-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Zamestnanec</label>
+                    <select 
+                      className="w-full h-12 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      value={lunchOverviewEmployee}
+                      onChange={(e) => setLunchOverviewEmployee(e.target.value)}
+                    >
+                      <option value="">Vybrať zamestnanca...</option>
+                      {employees && Object.entries(employees).map(([pin, name]) => (
+                        <option key={pin} value={pin}>{String(name)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Od</label>
+                      <Input
+                        type="date"
+                        value={lunchOverviewFromDate}
+                        onChange={(e) => setLunchOverviewFromDate(e.target.value)}
+                        className="h-12 border-black focus-visible:ring-black"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Do</label>
+                      <Input
+                        type="date"
+                        value={lunchOverviewToDate}
+                        onChange={(e) => setLunchOverviewToDate(e.target.value)}
+                        className="h-12 border-black focus-visible:ring-black"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter className="flex gap-2 sm:justify-between">
+                  <Button 
+                    variant="outline"
+                    onClick={() => setIsLunchOverviewDialogOpen(false)}
+                    className="flex-1 h-12 border-black"
+                  >
+                    Zrušiť
+                  </Button>
+                  <Button 
+                    onClick={handleLunchOverviewShow}
+                    className="flex-1 h-12 bg-black text-white hover:bg-black/90"
+                  >
+                    Ukázať
+                  </Button>
+                </DialogFooter>
+              </>
+            ) : (
+              <div className="flex flex-col gap-4 py-4">
+                <div className="flex justify-between items-center bg-emerald-50 p-4 rounded-xl border border-emerald-100">
+                  <span className="font-bold text-emerald-900">Počet obedov:</span>
+                  <span className="text-2xl font-bold text-emerald-600">{lunchOverviewResults.length}</span>
+                </div>
+                <div className="flex flex-col gap-2 max-h-[40vh] overflow-y-auto pr-1">
+                  {lunchOverviewResults.length > 0 ? (
+                    lunchOverviewResults.map((log, idx) => (
+                      <div key={idx} className="flex justify-between items-center p-3 border rounded-xl hover:bg-muted/50 transition-colors bg-white shadow-sm">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-sm">{log["dátum"]}</span>
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{log["Prevádzka"]}</span>
+                        </div>
+                        <span className="text-xs font-mono bg-muted px-2 py-1 rounded">{log["Original čas príchodu"]}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-10">
+                      <p className="text-muted-foreground text-sm font-medium">Žiadne obedy v tomto období.</p>
+                    </div>
+                  )}
+                </div>
                 <Button 
-                  onClick={() => handleVacationSave(false)}
-                  className="flex-1 h-12 bg-black text-white hover:bg-black/90"
+                  variant="outline" 
+                  className="w-full h-12 border-black font-semibold" 
+                  onClick={() => setIsViewingLunchOverview(false)}
                 >
-                  Uložiť
+                  Späť na výber
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
         </motion.div>
       </motion.div>
     </div>

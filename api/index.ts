@@ -455,6 +455,102 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(201).json({ success: true, meno: employeeName });
     }
 
+    if (url.includes('/api/lunches') && method === 'GET') {
+      try {
+        const queryParams = new URL(req.url || '', `http://${req.headers.host}`).searchParams;
+        const code = queryParams.get('code');
+        const from = queryParams.get('from');
+        const to = queryParams.get('to');
+
+        if (!code || !from || !to) {
+          return res.status(400).json({ message: "Chýbajúce parametre" });
+        }
+
+        const dbData = await firestoreGet("Global", "Databaza") || {};
+        const logs = Object.values(dbData) as any[];
+
+        const fromDate = new Date(from as string);
+        const toDate = new Date(to as string);
+        toDate.setHours(23, 59, 59, 999);
+
+        const filteredLunches = logs.filter(l => {
+          if (String(l["Kód"]) !== String(code)) return false;
+          if (l["Akcia"] !== "Obed") return false;
+
+          // Parse date DD. MM. YYYY or D. M. YYYY
+          const dateStr = String(l["dátum"]).trim();
+          const parts = dateStr.split('.').map(p => p.trim());
+          if (parts.length < 3) return false;
+          
+          const day = parseInt(parts[0], 10);
+          const month = parseInt(parts[1], 10);
+          const year = parseInt(parts[2], 10);
+          
+          const logDate = new Date(year, month - 1, day);
+          return logDate >= fromDate && logDate <= toDate;
+        }).sort((a, b) => {
+          const partsA = String(a["dátum"]).trim().split('.').map(p => p.trim());
+          const partsB = String(b["dátum"]).trim().split('.').map(p => p.trim());
+          const dateA = new Date(parseInt(partsA[2], 10), parseInt(partsA[1], 10) - 1, parseInt(partsA[0], 10));
+          const dateB = new Date(parseInt(partsB[2], 10), parseInt(partsB[1], 10) - 1, parseInt(partsB[0], 10));
+          return dateB.getTime() - dateA.getTime();
+        });
+
+        return res.json(filteredLunches);
+      } catch (error) {
+        console.error("Error fetching lunch overview:", error);
+        return res.status(500).json({ message: "Chyba pri načítaní obedov" });
+      }
+    }
+
+    if (url.includes('/api/lunches') && method === 'GET') {
+      try {
+        const queryParams = new URL(req.url || '', `http://${req.headers.host}`).searchParams;
+        const code = queryParams.get('code');
+        const from = queryParams.get('from');
+        const to = queryParams.get('to');
+
+        if (!code || !from || !to) {
+          return res.status(400).json({ message: "Chýbajúce parametre" });
+        }
+
+        const dbData = await firestoreGet("Global", "Databaza") || {};
+        const logs = Object.values(dbData) as any[];
+
+        const fromDate = new Date(from as string);
+        const toDate = new Date(to as string);
+        toDate.setHours(23, 59, 59, 999);
+
+        const filteredLunches = logs.filter(l => {
+          if (String(l["Kód"]) !== String(code)) return false;
+          if (l["Akcia"] !== "Obed") return false;
+
+          // Parse date DD. MM. YYYY or D. M. YYYY
+          const dateStr = String(l["dátum"]).trim();
+          const parts = dateStr.split('.').map(p => p.trim());
+          if (parts.length < 3) return false;
+          
+          const day = parseInt(parts[0], 10);
+          const month = parseInt(parts[1], 10);
+          const year = parseInt(parts[2], 10);
+          
+          const logDate = new Date(year, month - 1, day);
+          return logDate >= fromDate && logDate <= toDate;
+        }).sort((a, b) => {
+          const partsA = String(a["dátum"]).trim().split('.').map(p => p.trim());
+          const partsB = String(b["dátum"]).trim().split('.').map(p => p.trim());
+          const dateA = new Date(parseInt(partsA[2], 10), parseInt(partsA[1], 10) - 1, parseInt(partsA[0], 10));
+          const dateB = new Date(parseInt(partsB[2], 10), parseInt(partsB[1], 10) - 1, parseInt(partsB[0], 10));
+          return dateB.getTime() - dateA.getTime();
+        });
+
+        return res.json(filteredLunches);
+      } catch (error) {
+        console.error("Error fetching lunch overview:", error);
+        return res.status(500).json({ message: "Chyba pri načítaní obedov" });
+      }
+    }
+
     if (url.includes('/api/attendance/vacation') && method === 'DELETE') {
       const dbData = await firestoreGet("Global", "Databaza") || {};
       const newData: Record<string, any> = {};
