@@ -974,9 +974,17 @@ export default function Home() {
               </>
             ) : (
               <div className="flex flex-col gap-4 py-4">
-                <div className="flex justify-between items-center bg-emerald-50 p-4 rounded-xl border border-emerald-100">
-                  <span className="font-bold text-emerald-900">Počet obedov:</span>
-                  <span className="text-2xl font-bold text-emerald-600">{lunchOverviewResults.length}</span>
+                <div className="flex flex-col gap-1 bg-emerald-50 p-4 rounded-xl border border-emerald-100">
+                  <span className="text-sm font-bold text-emerald-900">
+                    {employees && lunchOverviewEmployee ? employees[lunchOverviewEmployee] : "Zamestnanec"}
+                  </span>
+                  <span className="text-xs text-emerald-700 font-medium">
+                    {new Date(lunchOverviewFromDate).toLocaleDateString("sk-SK")} - {new Date(lunchOverviewToDate).toLocaleDateString("sk-SK")}
+                  </span>
+                  <div className="flex justify-between items-center mt-2 pt-2 border-t border-emerald-200/50">
+                    <span className="text-sm font-bold text-emerald-900 uppercase tracking-wider">Počet obedov:</span>
+                    <span className="text-2xl font-black text-emerald-600">{lunchOverviewResults.length}</span>
+                  </div>
                 </div>
                 <div className="flex flex-col gap-2 max-h-[40vh] overflow-y-auto pr-1">
                   {lunchOverviewResults.length > 0 ? (
