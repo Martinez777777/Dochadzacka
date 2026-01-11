@@ -137,22 +137,38 @@ export default function Home() {
             title: "❌ V tento deň si nepracoval. Skontroluj to.",
             description: "Pre zápis obeda musíš mať v daný deň príchod.",
             variant: "destructive",
-            duration: Infinity, 
+            duration: 999999, // Set high duration so it doesn't auto-dismiss
             className: "bg-red-600 text-white",
+            action: (
+              <ToastAction altText="OK" onClick={() => dismiss()}>
+                OK
+              </ToastAction>
+            ),
           });
         } else if (data.message === "ERR_ALREADY_HAD_LUNCH") {
           toast({
             title: "❌ Obed si už mal. Skontroluj to.",
             description: "Záznam o obede pre tento deň už existuje.",
             variant: "destructive",
-            duration: Infinity,
+            duration: 999999,
             className: "bg-red-600 text-white",
+            action: (
+              <ToastAction altText="OK" onClick={() => dismiss()}>
+                OK
+              </ToastAction>
+            ),
           });
         } else {
           toast({
             title: "❌ Chyba",
             description: data.message || "Nepodarilo sa uložiť obed.",
             variant: "destructive",
+            duration: 999999,
+            action: (
+              <ToastAction altText="OK" onClick={() => dismiss()}>
+                OK
+              </ToastAction>
+            ),
           });
         }
         return;
@@ -214,7 +230,7 @@ export default function Home() {
                 <ToastAction 
                   altText="Nie"
                   onClick={() => {
-                    // This will naturally close the toast on click
+                    dismiss();
                   }}
                   className="h-11 bg-white text-black border-2 border-white hover:bg-gray-100 font-bold flex items-center justify-center rounded-md cursor-pointer"
                 >
@@ -233,7 +249,7 @@ export default function Home() {
               </div>
             ),
             variant: "destructive",
-            duration: Infinity,
+            duration: 999999,
             className: "bg-red-600 text-white flex-col items-start p-6 [&>button]:hidden",
           });
         } else {
@@ -241,6 +257,12 @@ export default function Home() {
             title: "❌ Chyba",
             description: data.message || "Nepodarilo sa uložiť dovolenku.",
             variant: "destructive",
+            duration: 999999,
+            action: (
+              <ToastAction altText="OK" onClick={() => dismiss()}>
+                OK
+              </ToastAction>
+            ),
           });
         }
         return;
@@ -368,14 +390,24 @@ export default function Home() {
             duration: 10000,
             variant: "default",
             className: "bg-green-600 text-white border-0 shadow-2xl z-[10000] scale-105 transition-all duration-200",
+            action: (
+              <ToastAction altText="OK" onClick={() => dismiss()}>
+                OK
+              </ToastAction>
+            ),
           });
         } else {
           toast({
             title: `✅ Si super ${nameToDisplay}.`,
             description: `Práve si sa prihlásil/a!`,
-            duration: 5000,
+            duration: 10000,
             variant: "default",
             className: "bg-green-600 text-white border-0 shadow-2xl z-[10000] scale-105 transition-all duration-200",
+            action: (
+              <ToastAction altText="OK" onClick={() => dismiss()}>
+                OK
+              </ToastAction>
+            ),
           });
         }
       },
@@ -390,6 +422,11 @@ export default function Home() {
             duration: 999999,
             variant: "destructive",
             className: "shadow-2xl z-[10000] scale-105 transition-all duration-200",
+            action: (
+              <ToastAction altText="OK" onClick={() => dismiss()}>
+                OK
+              </ToastAction>
+            ),
           });
           return;
         }
@@ -401,6 +438,11 @@ export default function Home() {
             duration: 999999,
             variant: "destructive",
             className: "shadow-2xl z-[10000] scale-105 transition-all duration-200",
+            action: (
+              <ToastAction altText="OK" onClick={() => dismiss()}>
+                OK
+              </ToastAction>
+            ),
           });
           return;
         }
@@ -413,6 +455,11 @@ export default function Home() {
             duration: 999999,
             variant: "destructive",
             className: "shadow-2xl z-[10000] scale-105 transition-all duration-200",
+            action: (
+              <ToastAction altText="OK" onClick={() => dismiss()}>
+                OK
+              </ToastAction>
+            ),
           });
           return;
         }
@@ -423,9 +470,14 @@ export default function Home() {
         toast({
           title: isAuthError ? "❌ Zadal si zlé heslo!" : isForgetError ? "❌ Upozornenie" : "❌ Chyba",
           description: error.message || "Nastala neznáma chyba",
-          duration: 5000,
+          duration: 999999,
           variant: "destructive",
           className: "shadow-2xl z-[10000] scale-105 transition-all duration-200",
+          action: (
+            <ToastAction altText="OK" onClick={() => dismiss()}>
+              OK
+            </ToastAction>
+          ),
         });
       }
     });
