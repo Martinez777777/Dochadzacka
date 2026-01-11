@@ -416,6 +416,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ message: "ERR_NOT_WORKED" });
       }
 
+      // Check if lunch is being recorded at the same store as arrival
+      const arrivalStore = workLog["Prevádzka"];
+      const currentStore = selectedStore || "Neznáma prevádzka";
+      if (arrivalStore && arrivalStore !== currentStore) {
+        return res.status(400).json({ message: `ERR_WRONG_STORE:${arrivalStore}` });
+      }
+
       const lunchLog = logs.find(l => {
         const logDate = String(l["dátum"] || "").trim().replace(/\s+/g, ' ');
         const logAction = String(l["Akcia"] || "").trim();

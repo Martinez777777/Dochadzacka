@@ -145,6 +145,20 @@ export default function Home() {
               </ToastAction>
             ),
           });
+        } else if (data.message.startsWith("ERR_WRONG_STORE:")) {
+          const storeName = data.message.split(":")[1];
+          toast({
+            title: "❌ Nesprávna prevádzka",
+            description: `Obed si môžeš zapísať len na prevádzke, kde si mal príchod (${storeName}).`,
+            variant: "destructive",
+            duration: 999999,
+            className: "bg-red-600 text-white",
+            action: (
+              <ToastAction altText="OK" onClick={() => dismiss()}>
+                OK
+              </ToastAction>
+            ),
+          });
         } else if (data.message === "ERR_ALREADY_HAD_LUNCH") {
           toast({
             title: "❌ Obed si už mal. Skontroluj to.",
