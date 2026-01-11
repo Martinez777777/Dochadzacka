@@ -149,7 +149,7 @@ export default function Home() {
           const storeName = data.message.split(":")[1];
           toast({
             title: "❌ Nesprávna prevádzka",
-            description: `Obed si môžeš zapísať len na prevádzke, kde si mal príchod (${storeName}).`,
+            description: `POZOR! Príchod máš na inej prevádzke ${storeName}. Tam by si mal mať aj obed. Napíš manažérovi.`,
             variant: "destructive",
             duration: 999999,
             className: "bg-red-600 text-white",
