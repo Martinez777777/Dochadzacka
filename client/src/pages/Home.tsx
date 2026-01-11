@@ -47,12 +47,15 @@ export default function Home() {
   useEffect(() => {
     if (!isLunchDialogOpen) {
       setLunchEmployee("");
+      setLunchDate(new Date().toISOString().split('T')[0]);
     }
   }, [isLunchDialogOpen]);
 
   useEffect(() => {
     if (!isVacationDialogOpen) {
       setVacationEmployee("");
+      setVacationDate(new Date().toISOString().split('T')[0]);
+      setVacationDuration("8");
     }
   }, [isVacationDialogOpen]);
 
@@ -61,6 +64,9 @@ export default function Home() {
       setLunchOverviewEmployee("");
       setLunchOverviewResults([]);
       setIsViewingLunchOverview(false);
+      const today = new Date().toISOString().split('T')[0];
+      setLunchOverviewFromDate(today);
+      setLunchOverviewToDate(today);
     }
   }, [isLunchOverviewDialogOpen]);
 
