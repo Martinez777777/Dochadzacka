@@ -990,11 +990,8 @@ export default function Home() {
                   {lunchOverviewResults.length > 0 ? (
                     lunchOverviewResults.map((log, idx) => (
                       <div key={idx} className="flex justify-between items-center p-3 border rounded-xl hover:bg-muted/50 transition-colors bg-white shadow-sm">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-sm">{log["dátum"]}</span>
-                          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{log["Prevádzka"]}</span>
-                        </div>
-                        <span className="text-xs font-mono bg-muted px-2 py-1 rounded">{log["Original čas príchodu"]}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">{log["Prevádzka"]}</span>
+                        <span className="font-bold text-sm">{log["dátum"]}</span>
                       </div>
                     ))
                   ) : (
