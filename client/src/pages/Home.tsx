@@ -76,6 +76,19 @@ export default function Home() {
     }
   }, [isLunchOverviewDialogOpen]);
 
+  const { data: stores } = useQuery<any[]>({
+    queryKey: [api.attendance.stores.path],
+    queryFn: async () => {
+      const res = await fetch(api.attendance.stores.path);
+      return res.json();
+    }
+  });
+
+  const { data: localStore } = useQuery({
+    queryKey: ["localSettings"],
+    queryFn: () => localStorage.getItem("selectedStore") || null
+  });
+
   const { toast, dismiss } = useToast();
   const createAttendance = useCreateAttendance();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -95,11 +108,6 @@ export default function Home() {
       const res = await fetch(api.attendance.employees.path);
       return res.json();
     }
-  });
-
-  const { data: localStore } = useQuery({
-    queryKey: ["localSettings"],
-    queryFn: () => localStorage.getItem("selectedStore") || null
   });
 
   const [, setLocation] = useLocation();
@@ -1048,9 +1056,8 @@ export default function Home() {
                     onChange={(e) => setManualEntryStore(e.target.value)}
                   >
                     <option value="">Vybrať prevádzku...</option>
-                    {/* Assuming stores are available via a query or fixed list */}
-                    {["Poctivá pekáreň & Bistro", "Pekáreň - Hlavná", "Bistro - Námestie"].map((store) => (
-                      <option key={store} value={store}>{store}</option>
+                    {stores && Array.isArray(stores) && stores.map((store: any) => (
+                      <option key={store.id || store.name} value={store.name}>{store.name}</option>
                     ))}
                   </select>
                 </div>
