@@ -76,29 +76,10 @@ export default function Home() {
     }
   }, [isLunchOverviewDialogOpen]);
 
-  useEffect(() => {
-    if (!isManualEntryDialogOpen) {
-      setManualEntryEmployee("");
-      setManualEntryAction("arrival");
-      setManualEntryStore(localStore || "");
-      setManualEntryDate(new Date().toISOString().split('T')[0]);
-      setManualEntryTime(new Date().toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit", hour12: false }));
-    }
-  }, [isManualEntryDialogOpen, localStore]);
-
-  const [, setLocation] = useLocation();
   const { toast, dismiss } = useToast();
   const createAttendance = useCreateAttendance();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  const { data: employees } = useQuery<Record<string, string>>({
-    queryKey: [api.attendance.employees.path],
-    queryFn: async () => {
-      const res = await fetch(api.attendance.employees.path);
-      return res.json();
-    }
-  });
 
   const { data: adminData } = useQuery({
     queryKey: [api.attendance.adminCode.path],
@@ -108,14 +89,34 @@ export default function Home() {
     }
   });
 
+  const { data: employees } = useQuery<Record<string, string>>({
+    queryKey: [api.attendance.employees.path],
+    queryFn: async () => {
+      const res = await fetch(api.attendance.employees.path);
+      return res.json();
+    }
+  });
+
   const { data: localStore } = useQuery({
     queryKey: ["localSettings"],
     queryFn: () => localStorage.getItem("selectedStore") || null
   });
 
+  const [, setLocation] = useLocation();
+
   const prevadzkaName = localStore || "Neznáma prevádzka";
 
   const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    if (!isManualEntryDialogOpen) {
+      setManualEntryEmployee("");
+      setManualEntryAction("arrival");
+      setManualEntryStore(localStore || "");
+      setManualEntryDate(new Date().toISOString().split('T')[0]);
+      setManualEntryTime(new Date().toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit", hour12: false }));
+    }
+  }, [isManualEntryDialogOpen, localStore]);
 
   const handleManagerSubmit = () => {
     if (adminData?.adminCode === managerInput) {
