@@ -33,6 +33,12 @@ export default function Home() {
   const [isLunchDialogOpen, setIsLunchDialogOpen] = useState(false);
   const [isVacationDialogOpen, setIsVacationDialogOpen] = useState(false);
   const [isLunchOverviewDialogOpen, setIsLunchOverviewDialogOpen] = useState(false);
+  const [isManualEntryDialogOpen, setIsManualEntryDialogOpen] = useState(false);
+  const [manualEntryEmployee, setManualEntryEmployee] = useState("");
+  const [manualEntryAction, setManualEntryAction] = useState("arrival");
+  const [manualEntryStore, setManualEntryStore] = useState("");
+  const [manualEntryDate, setManualEntryDate] = useState(new Date().toISOString().split('T')[0]);
+  const [manualEntryTime, setManualEntryTime] = useState(new Date().toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit", hour12: false }));
   const [lunchOverviewEmployee, setLunchOverviewEmployee] = useState("");
   const [lunchOverviewFromDate, setLunchOverviewFromDate] = useState(new Date().toISOString().split('T')[0]);
   const [lunchOverviewToDate, setLunchOverviewToDate] = useState(new Date().toISOString().split('T')[0]);
@@ -69,6 +75,16 @@ export default function Home() {
       setLunchOverviewToDate(today);
     }
   }, [isLunchOverviewDialogOpen]);
+
+  useEffect(() => {
+    if (!isManualEntryDialogOpen) {
+      setManualEntryEmployee("");
+      setManualEntryAction("arrival");
+      setManualEntryStore(localStore || "");
+      setManualEntryDate(new Date().toISOString().split('T')[0]);
+      setManualEntryTime(new Date().toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit", hour12: false }));
+    }
+  }, [isManualEntryDialogOpen, localStore]);
 
   const [, setLocation] = useLocation();
   const { toast, dismiss } = useToast();
@@ -349,6 +365,74 @@ export default function Home() {
       
       setIsVacationDialogOpen(false);
       setVacationEmployee("");
+    } catch (error) {
+      setIsProcessing(false);
+      toast({
+        title: "❌ Chyba",
+        description: "Chyba pripojenia k serveru.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleManualEntrySave = async () => {
+    if (!manualEntryEmployee || !manualEntryAction || !manualEntryStore || !manualEntryDate || !manualEntryTime) {
+      toast({
+        title: "❌ Zabudol si niečo vyplniť, oprav to.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      // Manual entry needs to look exactly like a real clock-in/out
+      // We will use the same endpoint but with a custom timestamp
+      const [hours, minutes] = manualEntryTime.split(':');
+      const [year, month, day] = manualEntryDate.split('-');
+      const clientTimestamp = new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes)).toISOString();
+
+      const res = await fetch(api.attendance.create.path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: manualEntryEmployee,
+          type: manualEntryAction,
+          selectedStore: manualEntryStore,
+          clientTimestamp: clientTimestamp
+        }),
+      });
+
+      const data = await res.json();
+      setIsProcessing(false);
+
+      if (!res.ok) {
+        toast({
+          title: "❌ Chyba pri zápise",
+          description: data.message || "Nepodarilo sa uložiť manuálny záznam.",
+          variant: "destructive",
+          duration: 999999,
+          action: (
+            <ToastAction altText="OK" onClick={() => dismiss()}>
+              OK
+            </ToastAction>
+          ),
+        });
+        return;
+      }
+
+      const meno = data.meno || "zamestnanec";
+      const formattedDate = new Date(manualEntryDate).toLocaleDateString("sk-SK");
+      const actionLabel = manualEntryAction === "arrival" ? "príchod" : "odchod";
+      
+      toast({
+        title: `✅ Manuálny záznam uložený pre ${meno}.`,
+        description: `Zapísaný ${actionLabel} na ${formattedDate} o ${manualEntryTime}.`,
+        duration: 10000,
+        className: "bg-green-600 text-white",
+      });
+      
+      setIsManualEntryDialogOpen(false);
     } catch (error) {
       setIsProcessing(false);
       toast({
@@ -790,8 +874,13 @@ export default function Home() {
                     variant="outline"
                     className="w-full h-10 border-black font-semibold text-sm"
                     onClick={() => {
-                      setIsManagerMenuOpen(false);
-                      toast({ title: `Funkcia ${item} bude doplnená neskôr.` });
+                      if (item === "Manuálny záznam") {
+                        setIsManagerMenuOpen(false);
+                        setTimeout(() => setIsManualEntryDialogOpen(true), 100);
+                      } else {
+                        setIsManagerMenuOpen(false);
+                        toast({ title: `Funkcia ${item} bude doplnená neskôr.` });
+                      }
                     }}
                   >
                     {item}
@@ -920,7 +1009,90 @@ export default function Home() {
           </DialogContent>
         </Dialog>
 
-        <Dialog open={isLunchOverviewDialogOpen} onOpenChange={setIsLunchOverviewDialogOpen}>
+          <Dialog open={isManualEntryDialogOpen} onOpenChange={setIsManualEntryDialogOpen}>
+            <DialogContent className="sm:max-w-md bg-white">
+              <DialogHeader>
+                <DialogTitle>Manuálny záznam</DialogTitle>
+              </DialogHeader>
+              <div className="flex flex-col gap-4 py-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Zamestnanec</label>
+                  <select 
+                    className="w-full h-12 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    value={manualEntryEmployee}
+                    onChange={(e) => setManualEntryEmployee(e.target.value)}
+                  >
+                    <option value="">Vybrať zamestnanca...</option>
+                    {employees && Object.entries(employees).map(([pin, name]) => (
+                      <option key={pin} value={pin}>{String(name)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Akcia</label>
+                  <select 
+                    className="w-full h-12 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    value={manualEntryAction}
+                    onChange={(e) => setManualEntryAction(e.target.value)}
+                  >
+                    <option value="arrival">Príchod</option>
+                    <option value="departure">Odchod</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Prevádzka</label>
+                  <select 
+                    className="w-full h-12 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    value={manualEntryStore}
+                    onChange={(e) => setManualEntryStore(e.target.value)}
+                  >
+                    <option value="">Vybrať prevádzku...</option>
+                    {/* Assuming stores are available via a query or fixed list */}
+                    {["Poctivá pekáreň & Bistro", "Pekáreň - Hlavná", "Bistro - Námestie"].map((store) => (
+                      <option key={store} value={store}>{store}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Dátum</label>
+                    <Input
+                      type="date"
+                      value={manualEntryDate}
+                      onChange={(e) => setManualEntryDate(e.target.value)}
+                      className="h-12 border-black focus-visible:ring-black"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Čas</label>
+                    <Input
+                      type="time"
+                      value={manualEntryTime}
+                      onChange={(e) => setManualEntryTime(e.target.value)}
+                      className="h-12 border-black focus-visible:ring-black"
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter className="flex gap-2 sm:justify-between">
+                <Button 
+                  variant="outline"
+                  onClick={() => setIsManualEntryDialogOpen(false)}
+                  className="flex-1 h-12 border-black"
+                >
+                  Zrušiť
+                </Button>
+                <Button 
+                  onClick={handleManualEntrySave}
+                  className="flex-1 h-12 bg-black text-white hover:bg-black/90"
+                >
+                  Uložiť
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isLunchOverviewDialogOpen} onOpenChange={setIsLunchOverviewDialogOpen}>
           <DialogContent className="sm:max-w-md bg-white max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Prehľad obedy</DialogTitle>
