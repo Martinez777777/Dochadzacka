@@ -80,6 +80,19 @@ export const api = {
         200: z.record(z.string()),
       },
     },
+    activeEmployees: {
+      method: 'GET' as const,
+      path: '/api/attendance/active',
+      responses: {
+        200: z.array(z.object({
+          meno: z.string(),
+          datum: z.string(),
+          cas: z.string(),
+          zaokruhlenyCas: z.string(),
+          prevadzka: z.string()
+        })),
+      },
+    },
     createLunch: {
       method: 'POST' as const,
       path: '/api/attendance/lunch',

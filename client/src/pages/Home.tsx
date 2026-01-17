@@ -32,6 +32,7 @@ export default function Home() {
   const [managerTarget, setManagerTarget] = useState<"menu" | "prevadzka" | "logout">("menu");
   const [isLunchDialogOpen, setIsLunchDialogOpen] = useState(false);
   const [isVacationDialogOpen, setIsVacationDialogOpen] = useState(false);
+  const [isActiveEmployeesDialogOpen, setIsActiveEmployeesDialogOpen] = useState(false);
   const [isLunchOverviewDialogOpen, setIsLunchOverviewDialogOpen] = useState(false);
   const [isManualEntryDialogOpen, setIsManualEntryDialogOpen] = useState(false);
   const [manualEntryEmployee, setManualEntryEmployee] = useState("");
@@ -111,6 +112,16 @@ export default function Home() {
   });
 
   const [, setLocation] = useLocation();
+
+  const { data: activeEmployees, isLoading: isActiveEmployeesLoading } = useQuery<any[]>({
+    queryKey: ["/api/attendance/active"],
+    queryFn: async () => {
+      const res = await fetch("/api/attendance/active");
+      if (!res.ok) throw new Error("Failed to fetch active employees");
+      return res.json();
+    },
+    enabled: isActiveEmployeesDialogOpen,
+  });
 
   const prevadzkaName = localStore || "Neznáma prevádzka";
 
@@ -870,7 +881,7 @@ export default function Home() {
               <div className="flex flex-col gap-2 py-4 text-center">
                 {[
                   "Manuálny záznam",
-                  "Aktuálne prihlasený",
+                  "Aktuálne prihlasení",
                   "Prehľad dochádzka",
                   "Prehľad dovolenka",
                   "Počet na prevádzke",
@@ -892,6 +903,9 @@ export default function Home() {
                       if (item === "Manuálny záznam") {
                         setIsManagerMenuOpen(false);
                         setTimeout(() => setIsManualEntryDialogOpen(true), 100);
+                      } else if (item === "Aktuálne prihlasení") {
+                        setIsManagerMenuOpen(false);
+                        setTimeout(() => setIsActiveEmployeesDialogOpen(true), 100);
                       } else {
                         setIsManagerMenuOpen(false);
                         toast({ title: `Funkcia ${item} bude doplnená neskôr.` });
@@ -1108,6 +1122,60 @@ export default function Home() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+        <Dialog open={isActiveEmployeesDialogOpen} onOpenChange={setIsActiveEmployeesDialogOpen}>
+          <DialogContent className="sm:max-w-md bg-white max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Aktuálne prihlasení zamestnanci</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-4 py-4">
+              {isActiveEmployeesLoading ? (
+                <div className="text-center py-10">
+                  <p className="text-muted-foreground text-sm font-medium">Načítavam...</p>
+                </div>
+              ) : activeEmployees && activeEmployees.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  {activeEmployees.map((emp, idx) => (
+                    <div key={idx} className="flex flex-col p-4 border rounded-xl bg-white shadow-sm gap-1">
+                      <div className="flex justify-between items-start">
+                        <span className="font-bold text-lg">{emp.meno}</span>
+                        <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                          {emp.prevadzka}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t text-sm">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold">Dátum</span>
+                          <span>{emp.datum}</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold">Čas</span>
+                          <span>{emp.cas}</span>
+                        </div>
+                        <div className="flex flex-col col-span-2 mt-1">
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold">Zaokrúhlený čas</span>
+                          <span className="font-semibold text-emerald-600">{emp.zaokruhlenyCas || "-"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-10">
+                  <p className="text-muted-foreground text-sm font-medium">Momentálne nie sú prihlásení žiadni zamestnanci.</p>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button 
+                className="w-full h-12 bg-black text-white hover:bg-black/90 font-bold"
+                onClick={() => setIsActiveEmployeesDialogOpen(false)}
+              >
+                Zavrieť
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
           <Dialog open={isLunchOverviewDialogOpen} onOpenChange={setIsLunchOverviewDialogOpen}>
           <DialogContent className="sm:max-w-md bg-white max-h-[85vh] overflow-y-auto">

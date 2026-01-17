@@ -428,6 +428,53 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/attendance/active", async (req, res) => {
+    try {
+      const dbData = await firestoreGet("Global", "Databaza") || {};
+      const logs = Object.values(dbData) as any[];
+      
+      // Get latest log for each employee
+      const latestLogsByEmployee: Record<string, any> = {};
+      
+      logs.forEach(log => {
+        const code = String(log["Kód"]);
+        if (!latestLogsByEmployee[code]) {
+          latestLogsByEmployee[code] = log;
+        } else {
+          // Compare dates and times to find the latest
+          const parseTime = (dateStr: string, timeStr: string) => {
+            if (!dateStr || !timeStr) return 0;
+            const [d, m, y] = dateStr.split('.').map(Number);
+            const [hh, mm, ss] = timeStr.split(':').map(Number);
+            return new Date(y, m - 1, d, hh, mm, ss || 0).getTime();
+          };
+          
+          const currentLatestTime = parseTime(latestLogsByEmployee[code]["dátum"], latestLogsByEmployee[code]["Original čas príchodu"]);
+          const logTime = parseTime(log["dátum"], log["Original čas príchodu"]);
+          
+          if (logTime > currentLatestTime) {
+            latestLogsByEmployee[code] = log;
+          }
+        }
+      });
+      
+      const activeEmployees = Object.values(latestLogsByEmployee)
+        .filter(log => log["Akcia"] === "Príchod" || log["Akcia"] === "arrival")
+        .map(log => ({
+          meno: log["Meno"],
+          datum: log["dátum"],
+          cas: log["Original čas príchodu"],
+          zaokruhlenyCas: log["Zaokruhlený čas príchodu"],
+          prevadzka: log["Prevádzka"]
+        }));
+        
+      res.json(activeEmployees);
+    } catch (error) {
+      console.error("Error fetching active employees:", error);
+      res.status(500).json({ error: "Failed to fetch active employees" });
+    }
+  });
+
   app.post(api.attendance.createLunch.path, async (req, res) => {
     try {
       const { code, date, selectedStore } = req.body;
