@@ -1315,7 +1315,7 @@ export default function Home() {
                         </div>
                         <div className="flex flex-col">
                           <span className="text-[9px] text-muted-foreground uppercase font-black tracking-tighter">Trvanie (hod)</span>
-                          <span className="font-bold text-sm">{log["Trvanie"] || log["trvanie"] || "8"} h</span>
+                          <span className="font-bold text-sm">{log["Dovolenka (h)"] || log["Trvanie"] || log["trvanie"] || "8"}</span>
                         </div>
                       </div>
                     </div>
