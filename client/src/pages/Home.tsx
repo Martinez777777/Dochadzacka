@@ -147,7 +147,13 @@ export default function Home() {
         }
       });
       if (!res.ok) throw new Error("Failed to fetch attendance overview");
-      return res.json();
+      const allData = await res.json();
+      // Filter out vacations - only show arrival, departure, and lunch
+      return allData.filter((log: any) => 
+        log["Akcia"] === "Príchod" || log["Akcia"] === "arrival" || 
+        log["Akcia"] === "Odchod" || log["Akcia"] === "departure" ||
+        log["Akcia"] === "Obed" || log["Akcia"] === "lunch"
+      );
     },
     enabled: isAttendanceOverviewDialogOpen,
     refetchOnMount: true,
@@ -1309,7 +1315,7 @@ export default function Home() {
                         </div>
                         <div className="flex flex-col">
                           <span className="text-[9px] text-muted-foreground uppercase font-black tracking-tighter">Trvanie (hod)</span>
-                          <span className="font-bold text-sm">{log["Trvanie"] || "8"} h</span>
+                          <span className="font-bold text-sm">{log["Trvanie"] || log["trvanie"] || "8"} h</span>
                         </div>
                       </div>
                     </div>
