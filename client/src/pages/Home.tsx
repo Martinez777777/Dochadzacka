@@ -395,11 +395,17 @@ export default function Home() {
 
     setIsProcessing(true);
     try {
-      // Manual entry needs to look exactly like a real clock-in/out
-      // We will use the same endpoint but with a custom timestamp
+      // Create a local date string that preserves the selected time
       const [hours, minutes] = manualEntryTime.split(':');
       const [year, month, day] = manualEntryDate.split('-');
-      const clientTimestamp = new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes)).toISOString();
+      
+      // We construct a date in the local timezone and then format it to ISO while keeping the local time values
+      // This ensures that "9:00" in the picker remains "09:00" in the database/ISO string
+      const date = new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes));
+      
+      // To get an ISO-like string with local time: YYYY-MM-DDTHH:mm:ss.sss
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const clientTimestamp = `${year}-${month}-${day}T${pad(Number(hours))}:${pad(Number(minutes))}:00.000Z`;
 
       const res = await fetch(api.attendance.create.path, {
         method: 'POST',
