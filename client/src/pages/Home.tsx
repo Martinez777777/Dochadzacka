@@ -34,6 +34,7 @@ export default function Home() {
   const [isVacationDialogOpen, setIsVacationDialogOpen] = useState(false);
   const [isActiveEmployeesDialogOpen, setIsActiveEmployeesDialogOpen] = useState(false);
   const [isAttendanceOverviewDialogOpen, setIsAttendanceOverviewDialogOpen] = useState(false);
+  const [isVacationOverviewDialogOpen, setIsVacationOverviewDialogOpen] = useState(false);
   const [isLunchOverviewDialogOpen, setIsLunchOverviewDialogOpen] = useState(false);
   const [isManualEntryDialogOpen, setIsManualEntryDialogOpen] = useState(false);
   const [manualEntryEmployee, setManualEntryEmployee] = useState("");
@@ -49,6 +50,8 @@ export default function Home() {
   const [lunchEmployee, setLunchEmployee] = useState("");
   const [attendanceOverviewFromDate, setAttendanceOverviewFromDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendanceOverviewToDate, setAttendanceOverviewToDate] = useState(new Date().toISOString().split('T')[0]);
+  const [vacationOverviewFromDate, setVacationOverviewFromDate] = useState(new Date().toISOString().split('T')[0]);
+  const [vacationOverviewToDate, setVacationOverviewToDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendanceOverviewResults, setAttendanceOverviewResults] = useState<any[]>([]);
   const [lunchDate, setLunchDate] = useState(new Date().toISOString().split('T')[0]);
   const [vacationEmployee, setVacationEmployee] = useState("");
@@ -147,6 +150,24 @@ export default function Home() {
       return res.json();
     },
     enabled: isAttendanceOverviewDialogOpen,
+    refetchOnMount: true,
+  });
+
+  const { data: vacationOverview, isLoading: isVacationOverviewLoading } = useQuery<any[]>({
+    queryKey: ["/api/attendance/overview", vacationOverviewFromDate, vacationOverviewToDate, "Dovolenka"],
+    queryFn: async () => {
+      const res = await fetch(`/api/attendance/overview?from=${vacationOverviewFromDate}&to=${vacationOverviewToDate}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      if (!res.ok) throw new Error("Failed to fetch vacation overview");
+      const allData = await res.json();
+      return allData.filter((log: any) => log["Akcia"] === "Dovolenka" || log["Akcia"] === "vacation");
+    },
+    enabled: isVacationOverviewDialogOpen,
+    refetchOnMount: true,
   });
 
   const prevadzkaName = localStore || "Neznáma prevádzka";
@@ -935,6 +956,9 @@ export default function Home() {
                       } else if (item === "Prehľad dochádzka") {
                         setIsManagerMenuOpen(false);
                         setTimeout(() => setIsAttendanceOverviewDialogOpen(true), 100);
+                      } else if (item === "Prehľad dovolenka") {
+                        setIsManagerMenuOpen(false);
+                        setTimeout(() => setIsVacationOverviewDialogOpen(true), 100);
                       } else {
                         setIsManagerMenuOpen(false);
                         toast({ title: `Funkcia ${item} bude doplnená neskôr.` });
@@ -1177,12 +1201,6 @@ export default function Home() {
                     className="h-12 border-black focus-visible:ring-black font-bold"
                   />
                 </div>
-                <Button 
-                  onClick={() => refetchAttendanceOverview()}
-                  className="col-span-2 h-12 bg-black text-white hover:bg-black/90 font-bold mt-2"
-                >
-                  Aktualizovať
-                </Button>
               </div>
 
               {isAttendanceOverviewLoading ? (
@@ -1233,6 +1251,80 @@ export default function Home() {
               <Button 
                 className="w-full h-14 bg-black text-white hover:bg-black/90 font-black text-lg rounded-xl"
                 onClick={() => setIsAttendanceOverviewDialogOpen(false)}
+              >
+                Zavrieť prehľad
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isVacationOverviewDialogOpen} onOpenChange={setIsVacationOverviewDialogOpen}>
+          <DialogContent className="sm:max-w-4xl bg-white max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Prehľad dovoleniek</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-xl">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Od</label>
+                  <Input
+                    type="date"
+                    value={vacationOverviewFromDate}
+                    onChange={(e) => setVacationOverviewFromDate(e.target.value)}
+                    className="h-12 border-black focus-visible:ring-black font-bold"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Do</label>
+                  <Input
+                    type="date"
+                    value={vacationOverviewToDate}
+                    onChange={(e) => setVacationOverviewToDate(e.target.value)}
+                    className="h-12 border-black focus-visible:ring-black font-bold"
+                  />
+                </div>
+              </div>
+
+              {isVacationOverviewLoading ? (
+                <div className="text-center py-20">
+                  <p className="text-muted-foreground text-sm font-medium animate-pulse">Načítavam záznamy...</p>
+                </div>
+              ) : vacationOverview && vacationOverview.length > 0 ? (
+                <div className="flex flex-col gap-3">
+                  {vacationOverview.map((log, idx) => (
+                    <div key={idx} className="flex flex-col p-4 border-2 rounded-2xl bg-white shadow-sm hover:shadow-md transition-shadow gap-2">
+                      <div className="flex justify-between items-start">
+                        <div className="flex flex-col">
+                          <span className="font-black text-xl text-black">{log["Meno"]}</span>
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{log["Prevádzka"]}</span>
+                        </div>
+                        <span className="text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-widest bg-amber-100 text-amber-800">
+                          Dovolenka
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 mt-2 pt-3 border-t-2 border-dashed border-muted">
+                        <div className="flex flex-col">
+                          <span className="text-[9px] text-muted-foreground uppercase font-black tracking-tighter">Dátum</span>
+                          <span className="font-bold text-sm">{log["dátum"]}</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[9px] text-muted-foreground uppercase font-black tracking-tighter">Trvanie (hod)</span>
+                          <span className="font-bold text-sm">{log["Trvanie"] || "8"} h</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-20 border-2 border-dashed rounded-2xl">
+                  <p className="text-muted-foreground text-sm font-medium">Žiadne záznamy o dovolenke.</p>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button 
+                className="w-full h-14 bg-black text-white hover:bg-black/90 font-black text-lg rounded-xl"
+                onClick={() => setIsVacationOverviewDialogOpen(false)}
               >
                 Zavrieť prehľad
               </Button>
