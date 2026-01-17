@@ -494,6 +494,37 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/attendance/overview", async (req, res) => {
+    try {
+      const { from, to } = req.query;
+      const dbData = await firestoreGet("Global", "Databaza") || {};
+      const logs = Object.values(dbData) as any[];
+      
+      const parseDate = (dateStr: string) => {
+        if (!dateStr) return 0;
+        const [d, m, y] = dateStr.split('.').map(Number);
+        return new Date(y, m - 1, d).getTime();
+      };
+
+      const fromTime = from ? new Date(from as string).setHours(0,0,0,0) : 0;
+      const toTime = to ? new Date(to as string).setHours(23,59,59,999) : Infinity;
+
+      const filteredLogs = logs.filter(log => {
+        const logTime = parseDate(log["dátum"]);
+        return logTime >= fromTime && logTime <= toTime;
+      }).sort((a, b) => {
+        const timeB = parseTime(b["dátum"], b["Original čas príchodu"]);
+        const timeA = parseTime(a["dátum"], a["Original čas príchodu"]);
+        return timeB - timeA;
+      });
+
+      res.json(filteredLogs);
+    } catch (error) {
+      console.error("Error fetching attendance overview:", error);
+      res.status(500).json({ error: "Failed to fetch attendance overview" });
+    }
+  });
+
   app.post(api.attendance.createLunch.path, async (req, res) => {
     try {
       const { code, date, selectedStore } = req.body;

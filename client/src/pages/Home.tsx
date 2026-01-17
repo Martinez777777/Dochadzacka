@@ -33,6 +33,7 @@ export default function Home() {
   const [isLunchDialogOpen, setIsLunchDialogOpen] = useState(false);
   const [isVacationDialogOpen, setIsVacationDialogOpen] = useState(false);
   const [isActiveEmployeesDialogOpen, setIsActiveEmployeesDialogOpen] = useState(false);
+  const [isAttendanceOverviewDialogOpen, setIsAttendanceOverviewDialogOpen] = useState(false);
   const [isLunchOverviewDialogOpen, setIsLunchOverviewDialogOpen] = useState(false);
   const [isManualEntryDialogOpen, setIsManualEntryDialogOpen] = useState(false);
   const [manualEntryEmployee, setManualEntryEmployee] = useState("");
@@ -46,6 +47,9 @@ export default function Home() {
   const [lunchOverviewResults, setLunchOverviewResults] = useState<any[]>([]);
   const [isViewingLunchOverview, setIsViewingLunchOverview] = useState(false);
   const [lunchEmployee, setLunchEmployee] = useState("");
+  const [attendanceOverviewFromDate, setAttendanceOverviewFromDate] = useState(new Date().toISOString().split('T')[0]);
+  const [attendanceOverviewToDate, setAttendanceOverviewToDate] = useState(new Date().toISOString().split('T')[0]);
+  const [attendanceOverviewResults, setAttendanceOverviewResults] = useState<any[]>([]);
   const [lunchDate, setLunchDate] = useState(new Date().toISOString().split('T')[0]);
   const [vacationEmployee, setVacationEmployee] = useState("");
   const [vacationDate, setVacationDate] = useState(new Date().toISOString().split('T')[0]);
@@ -128,6 +132,21 @@ export default function Home() {
     enabled: isActiveEmployeesDialogOpen,
     refetchOnWindowFocus: true,
     staleTime: 0
+  });
+
+  const { data: attendanceOverview, isLoading: isAttendanceOverviewLoading, refetch: refetchAttendanceOverview } = useQuery<any[]>({
+    queryKey: ["/api/attendance/overview", attendanceOverviewFromDate, attendanceOverviewToDate],
+    queryFn: async () => {
+      const res = await fetch(`/api/attendance/overview?from=${attendanceOverviewFromDate}&to=${attendanceOverviewToDate}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      if (!res.ok) throw new Error("Failed to fetch attendance overview");
+      return res.json();
+    },
+    enabled: isAttendanceOverviewDialogOpen,
   });
 
   const prevadzkaName = localStore || "Neznáma prevádzka";
@@ -913,6 +932,9 @@ export default function Home() {
                       } else if (item === "Aktuálne prihlasení") {
                         setIsManagerMenuOpen(false);
                         setTimeout(() => setIsActiveEmployeesDialogOpen(true), 100);
+                      } else if (item === "Prehľad dochádzka") {
+                        setIsManagerMenuOpen(false);
+                        setTimeout(() => setIsAttendanceOverviewDialogOpen(true), 100);
                       } else {
                         setIsManagerMenuOpen(false);
                         toast({ title: `Funkcia ${item} bude doplnená neskôr.` });
@@ -1129,6 +1151,94 @@ export default function Home() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+        <Dialog open={isAttendanceOverviewDialogOpen} onOpenChange={setIsAttendanceOverviewDialogOpen}>
+          <DialogContent className="sm:max-w-4xl bg-white max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Prehľad dochádzky</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-xl">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Od</label>
+                  <Input
+                    type="date"
+                    value={attendanceOverviewFromDate}
+                    onChange={(e) => setAttendanceOverviewFromDate(e.target.value)}
+                    className="h-12 border-black focus-visible:ring-black font-bold"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Do</label>
+                  <Input
+                    type="date"
+                    value={attendanceOverviewToDate}
+                    onChange={(e) => setAttendanceOverviewToDate(e.target.value)}
+                    className="h-12 border-black focus-visible:ring-black font-bold"
+                  />
+                </div>
+                <Button 
+                  onClick={() => refetchAttendanceOverview()}
+                  className="col-span-2 h-12 bg-black text-white hover:bg-black/90 font-bold mt-2"
+                >
+                  Aktualizovať
+                </Button>
+              </div>
+
+              {isAttendanceOverviewLoading ? (
+                <div className="text-center py-20">
+                  <p className="text-muted-foreground text-sm font-medium animate-pulse">Načítavam záznamy...</p>
+                </div>
+              ) : attendanceOverview && attendanceOverview.length > 0 ? (
+                <div className="flex flex-col gap-3">
+                  {attendanceOverview.map((log, idx) => (
+                    <div key={idx} className="flex flex-col p-4 border-2 rounded-2xl bg-white shadow-sm hover:shadow-md transition-shadow gap-2">
+                      <div className="flex justify-between items-start">
+                        <div className="flex flex-col">
+                          <span className="font-black text-xl text-black">{log["Meno"]}</span>
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{log["Prevádzka"]}</span>
+                        </div>
+                        <span className={`text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-widest ${
+                          log["Akcia"] === "Príchod" ? "bg-emerald-100 text-emerald-800" : 
+                          log["Akcia"] === "Odchod" ? "bg-rose-100 text-rose-800" :
+                          log["Akcia"] === "Obed" ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800"
+                        }`}>
+                          {log["Akcia"]}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 mt-2 pt-3 border-t-2 border-dashed border-muted">
+                        <div className="flex flex-col">
+                          <span className="text-[9px] text-muted-foreground uppercase font-black tracking-tighter">Dátum</span>
+                          <span className="font-bold text-sm">{log["dátum"]}</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[9px] text-muted-foreground uppercase font-black tracking-tighter">Čas</span>
+                          <span className="font-bold text-sm">{log["Original čas príchodu"] || "-"}</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[9px] text-muted-foreground uppercase font-black tracking-tighter">Zaokrúhlený</span>
+                          <span className="font-bold text-sm text-emerald-600">{log["Zaokruhlený čas príchodu"] || "-"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-20 border-2 border-dashed rounded-2xl">
+                  <p className="text-muted-foreground text-sm font-medium">Žiadne záznamy pre vybrané obdobie.</p>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button 
+                className="w-full h-14 bg-black text-white hover:bg-black/90 font-black text-lg rounded-xl"
+                onClick={() => setIsAttendanceOverviewDialogOpen(false)}
+              >
+                Zavrieť prehľad
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={isActiveEmployeesDialogOpen} onOpenChange={setIsActiveEmployeesDialogOpen}>
           <DialogContent className="sm:max-w-md bg-white max-h-[85vh] overflow-y-auto">
