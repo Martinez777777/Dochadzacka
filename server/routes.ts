@@ -520,8 +520,8 @@ export async function registerRoutes(
         const logTime = parseDate(log["dátum"]);
         return logTime >= fromTime && logTime <= toTime;
       }).sort((a, b) => {
-        const timeB = parseTime(b["dátum"], b["Original čas príchodu"]);
-        const timeA = parseTime(a["dátum"], a["Original čas príchodu"]);
+        const timeB = parseTime(b["dátum"], b["Original čas príchodu"] || "00:00:00");
+        const timeA = parseTime(a["dátum"], a["Original čas príchodu"] || "00:00:00");
         return timeB - timeA;
       });
 

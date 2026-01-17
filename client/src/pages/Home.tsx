@@ -170,7 +170,12 @@ export default function Home() {
       });
       if (!res.ok) throw new Error("Failed to fetch vacation overview");
       const allData = await res.json();
-      return allData.filter((log: any) => log["Akcia"] === "Dovolenka" || log["Akcia"] === "vacation");
+      return allData.filter((log: any) => log["Akcia"] === "Dovolenka" || log["Akcia"] === "vacation")
+        .sort((a: any, b: any) => {
+          const [dA, mA, yA] = a["dátum"].split('.').map(Number);
+          const [dB, mB, yB] = b["dátum"].split('.').map(Number);
+          return new Date(yB, mB - 1, dB).getTime() - new Date(yA, mA - 1, dA).getTime();
+        });
     },
     enabled: isVacationOverviewDialogOpen,
     refetchOnMount: true,
