@@ -433,40 +433,45 @@ export async function registerRoutes(
       const dbData = await firestoreGet("Global", "Databaza") || {};
       const logs = Object.values(dbData) as any[];
       
-      // Get latest log for each employee
-      const latestLogsByEmployee: Record<string, any> = {};
+      // Get all logs for each employee, sorted by time
+      const employeeLogsMap: Record<string, any[]> = {};
       
+      const parseTime = (dateStr: string, timeStr: string) => {
+        if (!dateStr || !timeStr) return 0;
+        const [d, m, y] = dateStr.split('.').map(Number);
+        const [hh, mm, ss] = timeStr.split(':').map(Number);
+        return new Date(y, m - 1, d, hh, mm, ss || 0).getTime();
+      };
+
       logs.forEach(log => {
         const code = String(log["Kód"]);
-        if (!latestLogsByEmployee[code]) {
-          latestLogsByEmployee[code] = log;
-        } else {
-          // Compare dates and times to find the latest
-          const parseTime = (dateStr: string, timeStr: string) => {
-            if (!dateStr || !timeStr) return 0;
-            const [d, m, y] = dateStr.split('.').map(Number);
-            const [hh, mm, ss] = timeStr.split(':').map(Number);
-            return new Date(y, m - 1, d, hh, mm, ss || 0).getTime();
-          };
-          
-          const currentLatestTime = parseTime(latestLogsByEmployee[code]["dátum"], latestLogsByEmployee[code]["Original čas príchodu"]);
-          const logTime = parseTime(log["dátum"], log["Original čas príchodu"]);
-          
-          if (logTime > currentLatestTime) {
-            latestLogsByEmployee[code] = log;
+        if (!employeeLogsMap[code]) {
+          employeeLogsMap[code] = [];
+        }
+        employeeLogsMap[code].push(log);
+      });
+      
+      const activeEmployees: any[] = [];
+      
+      Object.keys(employeeLogsMap).forEach(code => {
+        const employeeLogs = employeeLogsMap[code].sort((a, b) => {
+          return parseTime(b["dátum"], b["Original čas príchodu"]) - parseTime(a["dátum"], a["Original čas príchodu"]);
+        });
+        
+        if (employeeLogs.length > 0) {
+          const latestLog = employeeLogs[0];
+          const action = latestLog["Akcia"];
+          if (action === "Príchod" || action === "arrival") {
+            activeEmployees.push({
+              meno: latestLog["Meno"],
+              datum: latestLog["dátum"],
+              cas: latestLog["Original čas príchodu"],
+              zaokruhlenyCas: latestLog["Zaokruhlený čas príchodu"],
+              prevadzka: latestLog["Prevádzka"]
+            });
           }
         }
       });
-      
-      const activeEmployees = Object.values(latestLogsByEmployee)
-        .filter(log => log["Akcia"] === "Príchod" || log["Akcia"] === "arrival")
-        .map(log => ({
-          meno: log["Meno"],
-          datum: log["dátum"],
-          cas: log["Original čas príchodu"],
-          zaokruhlenyCas: log["Zaokruhlený čas príchodu"],
-          prevadzka: log["Prevádzka"]
-        }));
         
       res.json(activeEmployees);
     } catch (error) {
