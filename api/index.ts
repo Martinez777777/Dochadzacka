@@ -326,6 +326,104 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const method = req.method || 'GET';
 
   try {
+    if (url.includes('/api/attendance/active') && method === 'GET') {
+      try {
+        const dbData = await firestoreGet("Global", "Databaza") || {};
+        const logs = Object.values(dbData) as any[];
+        
+        const employeeLogsMap: Record<string, any[]> = {};
+        
+        const parseTimeLocal = (dateStr: string, timeStr: string) => {
+          if (!dateStr || !timeStr) return 0;
+          const [d, m, y] = dateStr.split('.').map(Number);
+          const [hh, mm, ss] = timeStr.split(':').map(Number);
+          return new Date(y, m - 1, d, hh, mm, ss || 0).getTime();
+        };
+
+        logs.forEach(log => {
+          const code = String(log["Kód"]);
+          if (!code || code === "undefined" || code === "null") return;
+          if (!employeeLogsMap[code]) {
+            employeeLogsMap[code] = [];
+          }
+          employeeLogsMap[code].push(log);
+        });
+        
+        const activeEmployees: any[] = [];
+        
+        Object.keys(employeeLogsMap).forEach(code => {
+          const employeeLogs = employeeLogsMap[code].sort((a, b) => {
+            const timeB = parseTimeLocal(b["dátum"], b["Original čas príchodu"]);
+            const timeA = parseTimeLocal(a["dátum"], a["Original čas príchodu"]);
+            return timeB - timeA;
+          });
+          
+          if (employeeLogs.length > 0) {
+            const lastAttendanceLog = employeeLogs.find(l => 
+              l["Akcia"] === "Príchod" || l["Akcia"] === "arrival" || 
+              l["Akcia"] === "Odchod" || l["Akcia"] === "departure"
+            );
+
+            if (lastAttendanceLog && (lastAttendanceLog["Akcia"] === "Príchod" || lastAttendanceLog["Akcia"] === "arrival")) {
+              activeEmployees.push({
+                meno: lastAttendanceLog["Meno"],
+                datum: lastAttendanceLog["dátum"],
+                cas: lastAttendanceLog["Original čas príchodu"],
+                zaokruhlenyCas: lastAttendanceLog["Zaokruhlený čas príchodu"],
+                prevadzka: lastAttendanceLog["Prevádzka"]
+              });
+            }
+          }
+        });
+          
+        return res.json(activeEmployees);
+      } catch (error: any) {
+        console.error("Error fetching active employees:", error);
+        return res.status(500).json({ error: "Failed to fetch active employees" });
+      }
+    }
+
+    if (url.includes('/api/attendance/overview') && method === 'GET') {
+      try {
+        const queryParams = new URL(req.url || '', `http://${req.headers.host}`).searchParams;
+        const from = queryParams.get('from');
+        const to = queryParams.get('to');
+        
+        const dbData = await firestoreGet("Global", "Databaza") || {};
+        const logs = Object.values(dbData) as any[];
+        
+        const parseDateLocal = (dateStr: string) => {
+          if (!dateStr) return 0;
+          const [d, m, y] = dateStr.split('.').map(Number);
+          return new Date(y, m - 1, d).getTime();
+        };
+
+        const parseTimeLocal = (dateStr: string, timeStr: string) => {
+          if (!dateStr || !timeStr) return 0;
+          const [d, m, y] = dateStr.split('.').map(Number);
+          const [hh, mm, ss] = timeStr.split(':').map(Number);
+          return new Date(y, m - 1, d, hh, mm, ss || 0).getTime();
+        };
+
+        const fromTime = from ? new Date(from as string).setHours(0,0,0,0) : 0;
+        const toTime = to ? new Date(to as string).setHours(23,59,59,999) : Infinity;
+
+        const filteredLogs = logs.filter(log => {
+          const logTime = parseDateLocal(log["dátum"]);
+          return logTime >= fromTime && logTime <= toTime;
+        }).sort((a, b) => {
+          const timeB = parseTimeLocal(b["dátum"], b["Original čas príchodu"] || "00:00:00");
+          const timeA = parseTimeLocal(a["dátum"], a["Original čas príchodu"] || "00:00:00");
+          return timeB - timeA;
+        });
+
+        return res.json(filteredLogs);
+      } catch (error: any) {
+        console.error("Error fetching attendance overview:", error);
+        return res.status(500).json({ error: "Failed to fetch attendance overview" });
+      }
+    }
+
     if (url.includes('/api/uploads/ftp') && method === 'POST') {
       const { name, base64Data, logId } = req.body;
       if (!name || !base64Data) {
