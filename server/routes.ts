@@ -455,6 +455,7 @@ export async function registerRoutes(
       const activeEmployees: any[] = [];
       
       Object.keys(employeeLogsMap).forEach(code => {
+        // Sort employee logs descending by time
         const employeeLogs = employeeLogsMap[code].sort((a, b) => {
           const timeB = parseTime(b["dátum"], b["Original čas príchodu"]);
           const timeA = parseTime(a["dátum"], a["Original čas príchodu"]);
@@ -462,18 +463,19 @@ export async function registerRoutes(
         });
         
         if (employeeLogs.length > 0) {
-          const latestLog = employeeLogs[0];
-          const action = latestLog["Akcia"];
-          // We check if the latest relevant action is an arrival.
-          // In some cases, there might be "Obed" or "Dovolenka" logs which shouldn't count as "logged out".
-          // The logic should be: if the most recent "Príchod/Odchod" was a "Príchod", they are active.
-          
+          // Find the last attendance action (Príchod/Odchod)
           const lastAttendanceLog = employeeLogs.find(l => 
             l["Akcia"] === "Príchod" || l["Akcia"] === "arrival" || 
             l["Akcia"] === "Odchod" || l["Akcia"] === "departure"
           );
 
+          // If the last attendance log is a Príchod, they are active
           if (lastAttendanceLog && (lastAttendanceLog["Akcia"] === "Príchod" || lastAttendanceLog["Akcia"] === "arrival")) {
+            // BUT: We must also check if this Príchod happened today.
+            // If the príchod is from a previous day, they should have been logged out.
+            // However, the current system seems to allow multi-day "active" status if not logged out.
+            // Let's stick to the "last action is Príchod" logic but ensure we take the ABSOLUTELY latest.
+            
             activeEmployees.push({
               meno: lastAttendanceLog["Meno"],
               datum: lastAttendanceLog["dátum"],

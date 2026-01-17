@@ -116,11 +116,18 @@ export default function Home() {
   const { data: activeEmployees, isLoading: isActiveEmployeesLoading } = useQuery<any[]>({
     queryKey: ["/api/attendance/active"],
     queryFn: async () => {
-      const res = await fetch("/api/attendance/active");
+      const res = await fetch("/api/attendance/active", {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       if (!res.ok) throw new Error("Failed to fetch active employees");
       return res.json();
     },
     enabled: isActiveEmployeesDialogOpen,
+    refetchOnWindowFocus: true,
+    staleTime: 0
   });
 
   const prevadzkaName = localStore || "Neznáma prevádzka";
