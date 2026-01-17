@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertAttendanceLogSchema, type AttendanceLog } from './schema';
+import { insertAttendanceLogSchema, type AttendanceLog } from "./schema";
 
 export const errorSchemas = {
   validation: z.object({

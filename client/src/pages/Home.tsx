@@ -12,7 +12,7 @@ import { ToastAction } from "@/components/ui/toast";
 const DEVICE_AUTH_KEY = "tofako_device_authorized";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@shared/routes";
+import { api } from "../../shared/routes";
 import {
   Dialog,
   DialogContent,
