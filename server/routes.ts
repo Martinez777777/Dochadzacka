@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import type { Server } from "http";
-import { api } from "../shared/routes";
+import { api } from "@shared/routes";
 import { z } from "zod";
 import * as ftp from 'basic-ftp';
 import { Readable } from 'stream';
