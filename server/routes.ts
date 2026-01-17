@@ -445,6 +445,7 @@ export async function registerRoutes(
 
       logs.forEach(log => {
         const code = String(log["Kód"]);
+        if (!code || code === "undefined" || code === "null") return;
         if (!employeeLogsMap[code]) {
           employeeLogsMap[code] = [];
         }
@@ -455,19 +456,30 @@ export async function registerRoutes(
       
       Object.keys(employeeLogsMap).forEach(code => {
         const employeeLogs = employeeLogsMap[code].sort((a, b) => {
-          return parseTime(b["dátum"], b["Original čas príchodu"]) - parseTime(a["dátum"], a["Original čas príchodu"]);
+          const timeB = parseTime(b["dátum"], b["Original čas príchodu"]);
+          const timeA = parseTime(a["dátum"], a["Original čas príchodu"]);
+          return timeB - timeA;
         });
         
         if (employeeLogs.length > 0) {
           const latestLog = employeeLogs[0];
           const action = latestLog["Akcia"];
-          if (action === "Príchod" || action === "arrival") {
+          // We check if the latest relevant action is an arrival.
+          // In some cases, there might be "Obed" or "Dovolenka" logs which shouldn't count as "logged out".
+          // The logic should be: if the most recent "Príchod/Odchod" was a "Príchod", they are active.
+          
+          const lastAttendanceLog = employeeLogs.find(l => 
+            l["Akcia"] === "Príchod" || l["Akcia"] === "arrival" || 
+            l["Akcia"] === "Odchod" || l["Akcia"] === "departure"
+          );
+
+          if (lastAttendanceLog && (lastAttendanceLog["Akcia"] === "Príchod" || lastAttendanceLog["Akcia"] === "arrival")) {
             activeEmployees.push({
-              meno: latestLog["Meno"],
-              datum: latestLog["dátum"],
-              cas: latestLog["Original čas príchodu"],
-              zaokruhlenyCas: latestLog["Zaokruhlený čas príchodu"],
-              prevadzka: latestLog["Prevádzka"]
+              meno: lastAttendanceLog["Meno"],
+              datum: lastAttendanceLog["dátum"],
+              cas: lastAttendanceLog["Original čas príchodu"],
+              zaokruhlenyCas: lastAttendanceLog["Zaokruhlený čas príchodu"],
+              prevadzka: lastAttendanceLog["Prevádzka"]
             });
           }
         }
