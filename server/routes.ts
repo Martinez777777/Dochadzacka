@@ -506,6 +506,13 @@ export async function registerRoutes(
         return new Date(y, m - 1, d).getTime();
       };
 
+      const parseTime = (dateStr: string, timeStr: string) => {
+        if (!dateStr || !timeStr) return 0;
+        const [d, m, y] = dateStr.split('.').map(Number);
+        const [hh, mm, ss] = timeStr.split(':').map(Number);
+        return new Date(y, m - 1, d, hh, mm, ss || 0).getTime();
+      };
+
       const fromTime = from ? new Date(from as string).setHours(0,0,0,0) : 0;
       const toTime = to ? new Date(to as string).setHours(23,59,59,999) : Infinity;
 
