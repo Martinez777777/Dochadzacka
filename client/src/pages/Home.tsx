@@ -1056,9 +1056,12 @@ export default function Home() {
                     onChange={(e) => setManualEntryStore(e.target.value)}
                   >
                     <option value="">Vybrať prevádzku...</option>
-                    {stores && Array.isArray(stores) && stores.map((store: any) => (
-                      <option key={store.id || store.name} value={store.name}>{store.name}</option>
-                    ))}
+                    {stores && Array.isArray(stores) && stores.map((store: any) => {
+                      const name = typeof store === 'string' ? store : (store.name || store.id);
+                      return (
+                        <option key={name} value={name}>{name}</option>
+                      );
+                    })}
                   </select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
