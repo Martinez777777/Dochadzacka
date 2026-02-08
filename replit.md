@@ -2,79 +2,166 @@
 
 ## Overview
 
-A staff attendance tracking system for bakery and bistro operations. Employees use a PIN code to log arrivals, departures, lunch breaks, and vacation time. The app has a PIN entry home screen, a lunch tracking page, a store selection page, and an admin dashboard for viewing/exporting/deleting attendance records.
+A staff attendance tracking system designed for bakery and bistro operations. Employees use a 4-digit PIN code to log arrivals, departures, lunch breaks, and vacation time. The application features a clean, minimal interface optimized for daily use with fast data entry and clear information hierarchy.
 
-The UI is in Slovak language. The system enforces location capacity limits, prevents double check-ins, and captures photos during check-in/check-out via the device camera.
+The system includes three main views: a PIN entry home screen for logging attendance, a lunch tracking page, and an admin dashboard for viewing all attendance records.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
 
-## System Architecture
+## Project Architecture
 
-### Frontend
-- **Framework**: React with TypeScript, built with Vite
-- **Routing**: Wouter (lightweight React router) with 4 main routes: Home (`/`), Lunches (`/lunches`), Admin (`/admin`), Prevadzka/Store selection (`/prevadzka`)
-- **UI Components**: shadcn/ui (new-york style) with Radix UI primitives, Tailwind CSS for styling
-- **State Management**: TanStack React Query for server state, local React state for UI
-- **Animations**: Framer Motion
-- **Fonts**: Outfit (body), Playfair Display (display), JetBrains Mono (monospace)
-- **Device Lock**: The app requires a one-time admin PIN entry per device, stored in localStorage under `tofako_device_authorized`
-- **Store Selection**: Each device stores its selected store in localStorage under `selectedStore` — this is device-specific, not global
+### Logic: Attendance Rules & Capacity
+The system enforces specific logic during the check-in (arrival) process:
 
-### Backend
-- **Development Server**: Express.js running with tsx (TypeScript execution), serves the Vite dev server in development and static files in production
-- **Production/Deployment**: Vercel serverless functions. The `api/index.ts` file handles all API requests as a single Vercel serverless function
-- **API Pattern**: Both `server/routes.ts` (Express, for local dev) and `api/index.ts` (Vercel serverless) contain duplicated Firestore helper functions and route logic. Changes to API logic need to be made in both files.
+1. **PIN Validation**: Verifies the 4-digit code against the employee database.
+2. **Location Capacity (Limit)**: 
+   - Each location has a configurable employee limit (stored in Firestore).
+   - If the limit is reached, the system prevents further check-ins.
+   - A non-dismissible red popup appears with the message: "Je Vás veľa prihlasených kto tu nemá byť? Napíš manažérovi".
+   - The popup lists all currently active employees at that location (Name, Date, Time).
+3. **Double Check-in Prevention**: 
+   - An employee cannot check in if they haven't checked out from their previous shift.
+   - If a previous "Príchod" exists without a corresponding "Odchod", the system displays the time and location of the open shift.
+4. **Photo Capture**: 
+   - For both arrivals and departures, a photo is captured using the device's camera.
+   - Photos are uploaded via FTP to `https://aplikacia.tofako.sk/Fotky/` with standardized naming: `{datum}_{cas}_{akcia}_{meno}_{prevadzka}.jpg`.
 
-### Data Storage
-- **Database**: Google Firestore (Firebase) accessed via REST API (not Firebase SDK). The project uses direct HTTP calls to the Firestore REST API with a hardcoded project ID (`dochadzka-web`) and API key.
-- **No local database**: There is no Drizzle, PostgreSQL, or any local database. All data lives in Firestore.
-- **Key Firestore Collections/Documents**:
-  - `Global/Databaza` — Main attendance records stored as a map
-  - `Global/Prevadzky` — List of stores/locations
-  - `Global/adminCode` — Admin PIN code
-  - `Global/Zamestnanci` — Employee data (PIN codes mapped to names)
-  - `Global/Limity` — Location capacity limits
+### Manager Functions (Manažér Menu)
+Access via admin PIN code. Available functions:
 
-### Schema
-- Defined in `shared/schema.ts` using Zod for validation (no Drizzle ORM)
-- `AttendanceLog`: id, code, type (arrival/departure/lunch/vacation), meno (name), createdAt
-- `InsertAttendanceLog`: code, type, optional photoData/photoPath/clientTimestamp/isManual
-- Shared route definitions in `shared/routes.ts` with Zod schemas for API contracts
+1. **Výpis jednotlivo** - Export individual attendance records to Excel (by date range)
+2. **Výpis - spolu** - Export summary attendance report to Excel (by date range)
+3. **Mazanie dochádzka** - Delete arrivals/departures only (by date range and store)
+4. **Mazanie obedy** - Delete lunch records only (by date range and store)
+5. **Mazanie dovolenka** - Delete vacation records only (by date range and store)
 
-### Key Business Logic
-1. **PIN Validation**: 4-digit codes verified against Firestore employee database
-2. **Location Capacity**: Each store has a configurable employee limit; exceeding it shows a blocking red popup
-3. **Double Check-in Prevention**: Cannot check in without first checking out from previous shift
-4. **Photo Capture**: Photos taken on arrival/departure, uploaded via FTP to `https://aplikacia.tofako.sk/Fotky/`
-5. **Network Time**: Client fetches time from WorldTimeAPI (Europe/Bratislava timezone) to prevent clock manipulation, with fallback to system time
+### API Endpoints
 
-### Manager Functions (accessed via admin PIN)
-- Export individual/summary attendance to Excel (XLSX)
-- Delete attendance/lunch/vacation records by date range and store
-- Rename employees, manage opening hours
+#### Attendance
+- `POST /api/attendance` - Log attendance (arrival/departure)
+- `GET /api/attendance` - Get all attendance logs
+- `POST /api/attendance/delete-range` - Delete arrivals/departures by date range and store
 
-### Path Aliases
-- `@/*` → `./client/src/*`
-- `@shared/*` → `./shared/*`
-- `@assets` → `./attached_assets/`
+#### Lunch
+- `POST /api/lunch` - Log lunch record
+- `POST /api/lunch/delete-range` - Delete lunch records by date range and store
+
+#### Vacation
+- `POST /api/vacation` - Log vacation record
+- `POST /api/vacation/delete-range` - Delete vacation records by date range and store
+
+#### Employees & Stores
+- `GET /api/employees` - Get all employees (PIN -> Name mapping)
+- `GET /api/stores` - Get all stores
+- `GET /api/admin-code` - Get admin PIN code
+- `GET /api/store-limit/:store` - Get employee limit for a store
+- `GET /api/store-hours/:store` - Get opening/closing hours for a store
+
+#### Export
+- `POST /api/export-individual` - Export individual records to Excel via FTP
+- `POST /api/export-summary` - Export summary report to Excel via FTP
+
+### Frontend Architecture
+- **Framework**: React 18 with TypeScript
+- **Routing**: Wouter (lightweight React router)
+- **State Management**: TanStack React Query for server state
+- **Styling**: Tailwind CSS with shadcn/ui component library (New York style)
+- **Animations**: Framer Motion for smooth UI transitions
+- **Build Tool**: Vite with React plugin
+
+**Design Pattern**: Component-based architecture with custom hooks for data fetching. UI components are organized in `client/src/components/ui/` following shadcn/ui conventions.
+
+### Backend Architecture
+- **Framework**: Express.js with TypeScript
+- **API Design**: RESTful endpoints defined in `server/routes.ts`
+- **Vercel API**: Identical endpoints in `api/index.ts` for Vercel deployment
+- **Storage**: Firebase Firestore for persistent data storage
+- **Firebase Config (Hardcoded)**: 
+  - Project ID: `dochadzka-web`
+  - API Key: `AIzaSyDy_MzgOTL67A6P08UtptHVpcdpYik6Fgc`
+
+### FTP Configuration (Hardcoded)
+- Host: `aplikacia.tofako.sk`
+- Username: `foto@aplikacia.tofako.sk`
+- Password: `Foto2025`
+- Folders:
+  - Photos: `/Fotky/`
+  - Excel exports: `/Exporty/`
+
+### Data Layer
+- **ORM**: Drizzle ORM with PostgreSQL dialect
+- **Schema**: Single `attendance_logs` table tracking code, type, and timestamp
+- **Validation**: Zod schemas generated from Drizzle schema using `drizzle-zod`
+
+### Type Safety
+- Shared types between frontend and backend via `@shared/*` path alias
+- API contracts defined with Zod for runtime validation
+- TypeScript strict mode enabled
+
+## File Structure
+
+```
+├── api/
+│   └── index.ts          # Vercel serverless API (identical to server/routes.ts)
+├── client/
+│   └── src/
+│       ├── components/
+│       │   └── ui/       # shadcn/ui components
+│       ├── hooks/        # Custom React hooks
+│       ├── lib/          # Utility functions
+│       └── pages/
+│           └── Home.tsx  # Main application page
+├── server/
+│   ├── index.ts          # Express server entry point
+│   └── routes.ts         # All API endpoints
+├── shared/
+│   └── schema.ts         # Shared types and schemas
+├── package.json
+├── vercel.json           # Vercel deployment config
+├── vite.config.ts        # Vite build configuration
+└── replit.md             # This file
+```
 
 ## External Dependencies
 
-### Services
-- **Google Firestore**: Primary database, accessed via REST API (project: `dochadzka-web`)
-- **FTP Server**: Photo uploads to `aplikacia.tofako.sk` using `basic-ftp` library
-- **WorldTimeAPI**: Network time synchronization (`https://worldtimeapi.org/api/timezone/Europe/Bratislava`)
-- **Vercel**: Production deployment platform (configured in `vercel.json`)
+### Database
+- **PostgreSQL**: Primary database (requires `DATABASE_URL` environment variable)
+- **Drizzle Kit**: Database migrations stored in `./migrations`
 
-### Key Libraries
-- **Frontend**: React, Wouter, TanStack React Query, Framer Motion, shadcn/ui, Radix UI, date-fns (with Slovak locale), Lucide icons, Uppy (file uploads)
-- **Backend**: Express.js, basic-ftp, xlsx (Excel generation), Zod (validation)
-- **Build**: Vite, TypeScript, Tailwind CSS, PostCSS
+### Third-Party Libraries
+- **Radix UI**: Headless UI primitives for accessible components
+- **date-fns**: Date formatting with Slovak locale support
+- **lucide-react**: Icon library
+- **class-variance-authority**: Component variant management
+- **exceljs**: Excel file generation for exports
+- **basic-ftp**: FTP uploads for photos and exports
 
-### Deployment Notes
-- Vercel config rewrites `/api/*` to the single serverless function at `/api/index.ts`
-- All other routes fall through to `index.html` for client-side routing
-- Build output goes to `dist/public`
-- Node.js 20.x required
+### Fonts (CDN)
+- Outfit (body text)
+- Playfair Display (display/headers)
+- JetBrains Mono (monospace/code input)
+
+### Development Tools
+- Replit-specific plugins for development (cartographer, dev-banner, runtime-error-modal)
+
+## Deployment
+
+### Local Development
+```bash
+npm run dev
+```
+Server runs on port 5000.
+
+### Vercel Deployment
+The `api/index.ts` file contains all the same endpoints as `server/routes.ts` for Vercel serverless deployment. The `vercel.json` configures routing to use the API.
+
+## Timezone
+All timestamps use Europe/Bratislava timezone.
+
+## Record Types (Akcia field values)
+- `Príchod` / `arrival` - Check-in/arrival
+- `Odchod` / `departure` - Check-out/departure  
+- `Obed` / `lunch` - Lunch break
+- `Dovolenka` / `vacation` - Vacation day
