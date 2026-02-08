@@ -505,7 +505,7 @@ export async function registerRoutes(
 ): Promise<Server> {
   app.post("/api/export/individual", async (req, res) => {
     try {
-      const { startDate, endDate } = req.body;
+      const { startDate, endDate, store } = req.body;
       const dbData = await firestoreGet("Global", "Databaza") || {};
       let logs = Object.values(dbData) as any[];
 
@@ -519,7 +519,14 @@ export async function registerRoutes(
           const logDateParts = log["dátum"].split('.');
           if (logDateParts.length !== 3) return false;
           const logDate = new Date(Number(logDateParts[2]), Number(logDateParts[1]) - 1, Number(logDateParts[0]));
-          return logDate >= start && logDate <= end;
+          
+          const inDateRange = logDate >= start && logDate <= end;
+          if (!inDateRange) return false;
+
+          if (store && store !== "all") {
+            return log["Prevádzka"] === store;
+          }
+          return true;
         });
       }
 
@@ -571,7 +578,7 @@ export async function registerRoutes(
 
   app.post("/api/export/summary", async (req, res) => {
     try {
-      const { startDate, endDate } = req.body;
+      const { startDate, endDate, store } = req.body;
       const dbData = await firestoreGet("Global", "Databaza") || {};
       const employees = await firestoreGet("Global", "Zamestnanci") || {};
       let logs = Object.values(dbData) as any[];
@@ -584,7 +591,14 @@ export async function registerRoutes(
         const logDateParts = log["dátum"].split('.');
         if (logDateParts.length !== 3) return false;
         const logDate = new Date(Number(logDateParts[2]), Number(logDateParts[1]) - 1, Number(logDateParts[0]));
-        return logDate >= start && logDate <= end;
+        
+        const inDateRange = logDate >= start && logDate <= end;
+        if (!inDateRange) return false;
+
+        if (store && store !== "all") {
+          return log["Prevádzka"] === store;
+        }
+        return true;
       });
 
       const summary: Record<string, any> = {};
