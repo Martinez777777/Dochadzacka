@@ -489,7 +489,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // POST /api/export/individual
     if (url.includes('/api/export/individual') && method === 'POST') {
-      const { startDate, endDate } = req.body;
+      const { startDate, endDate, store } = req.body;
       const dbData = await firestoreGet("Global", "Databaza") || {};
       let logs = Object.values(dbData) as any[];
 
@@ -502,7 +502,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const logDateParts = log["dátum"].split('.');
           if (logDateParts.length !== 3) return false;
           const logDate = new Date(Number(logDateParts[2]), Number(logDateParts[1]) - 1, Number(logDateParts[0]));
-          return logDate >= start && logDate <= end;
+          
+          // Filter by date
+          const inDateRange = logDate >= start && logDate <= end;
+          if (!inDateRange) return false;
+
+          // Filter by store if provided
+          if (store && store !== "all") {
+            return log["Prevádzka"] === store;
+          }
+
+          return true;
         });
       }
 
@@ -548,7 +558,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // POST /api/export/summary
     if (url.includes('/api/export/summary') && method === 'POST') {
-      const { startDate, endDate } = req.body;
+      const { startDate, endDate, store } = req.body;
       const dbData = await firestoreGet("Global", "Databaza") || {};
       const employees = await firestoreGet("Global", "Zamestnanci") || {};
       const logs = Object.values(dbData) as any[];
@@ -561,7 +571,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const logDateParts = log["dátum"].split('.');
         if (logDateParts.length !== 3) return false;
         const logDate = new Date(Number(logDateParts[2]), Number(logDateParts[1]) - 1, Number(logDateParts[0]));
-        return logDate >= start && logDate <= end;
+        
+        // Filter by date
+        const inDateRange = logDate >= start && logDate <= end;
+        if (!inDateRange) return false;
+
+        // Filter by store if provided
+        if (store && store !== "all") {
+          return log["Prevádzka"] === store;
+        }
+
+        return true;
       });
 
       const summary: Record<string, any> = {};
